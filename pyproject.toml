@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xrp-usb-controller"
+version = "0.1.0"
+description = "Control an XRP robot over a USB serial connection."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Michael Solberg <mpsolberg@gmail.com>" },
+]
+dependencies = [
+    "pyserial>=3.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/msolberg/xrp-usb-controller"
+
+[tool.setuptools.packages.find]
+where = ["src"]
