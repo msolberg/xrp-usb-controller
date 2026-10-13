@@ -8,7 +8,7 @@ The repository provides a client-server architecture for controlling the XRP rob
 
 ### Deploying the Controller to the Robot
 
-1. **Install [`usb_control.py`](usb_control.py) as the robot's boot script:**
+1. **Install [`usb_control.py`](src/xrp_usb_controller/usb_control.py) as the robot's boot script:**
    ```bash
    # Copy usb_control.py to the Pico as main.py so it starts automatically
    mpremote cp usb_control.py :main.py
@@ -16,7 +16,7 @@ The repository provides a client-server architecture for controlling the XRP rob
    # Soft-reboot the board to start the service
    mpremote reset
    ```   
-2. **Run the [`usb_controller.py`](usb_controller.py) script interactively to test connectivity:**
+2. **Run the [`usb_controller.py`](src/xrp_usb_controller/usb_controller.py) script interactively to test connectivity:**
    ```bash
    # Activate virtual environment
    source .venv/bin/activate
@@ -29,7 +29,7 @@ The repository provides a client-server architecture for controlling the XRP rob
 
 ### Using `XRPController` in Python Scripts
 
-Import [`XRPController`](usb_controller.py) and use it as a context manager:
+Import [`XRPController`](src/xrp_usb_controller/usb_controller.py) and use it as a context manager:
 
 ```python
 from usb_controller import XRPController
