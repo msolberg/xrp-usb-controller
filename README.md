@@ -32,7 +32,7 @@ The repository provides a client-server architecture for controlling the XRP rob
 Import [`XRPController`](src/xrp_usb_controller/usb_controller.py) and use it as a context manager:
 
 ```python
-from usb_controller import XRPController
+from xrp_usb_controller import XRPController
 
 # Connects to /dev/ttyACM0 by default and performs a handshake
 with XRPController() as bot:
