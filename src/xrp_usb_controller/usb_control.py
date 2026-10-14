@@ -4,6 +4,7 @@ import sys
 import uselect
 import asyncio
 import micropython
+import time
 from XRPLib.defaults import Board, drivetrain, imu
 from XRPLib.rangefinder import Rangefinder
 from XRPLib.servo import Servo
@@ -16,6 +17,93 @@ rf = Rangefinder()
 
 # Prevent incoming 0x03 (Ctrl+C) bytes from killing the event loop
 micropython.kbd_intr(-1)
+
+class XRPTelemetryCache:
+    def __init__(self):
+        # Rangefinder state
+        self.distance_cm: float = 0.0
+        self.distance_last_update: int = 0
+        
+        # IMU state
+        self.heading: float = 0.0
+        self.pitch: float = 0.0
+        self.roll: float = 0.0
+        self.accel_x: int = 0 
+        self.accel_y: int = 0 
+        self.accel_z: int = 0 
+        self.temperature: int = 0
+        self.imu_last_update: int = 0
+
+    async def _poll_rangefinder(self, interval_ms: int = 50):
+        """Dedicated rangefinder task (50ms / 20 Hz)."""
+        while True:
+            # 30ms max timeout happens inside distance() non-blockingly to other tasks
+            self.distance_cm = rf.distance()
+            self.distance_last_update = time.ticks_ms()
+            await asyncio.sleep_ms(interval_ms)
+
+    async def _poll_imu(self, interval_ms: int = 15):
+        """Dedicated IMU task (~15ms / ~66 Hz)."""
+        while True:
+            self.heading = imu.get_heading()
+            self.pitch = imu.get_pitch()
+            self.roll = imu.get_roll()
+            self.accel_x, self.accel_y, self.accel_z = imu.get_acc_rates()
+            self.temperature = imu.temperature()
+            self.imu_last_update = time.ticks_ms()
+            await asyncio.sleep_ms(interval_ms)
+
+    def get_distance(self) -> float:
+        """Returns distance from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.distance_last_update)
+        if self.distance_last_update !=0 and age < 100:
+            return self.distance_cm
+        # Otherwise, refresh the value and return it
+        self.distance_cm = rf.get_distance()
+        self.distance_last_update = time.ticks_ms()
+        return self.distance_cm
+
+    def get_heading(self) -> float:
+        """Returns heading from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return self.heading
+        # Otherwise, refresh the value and return it
+        self.heading = imu.get_heading()
+        self.imu_last_update = time.ticks_ms()
+        return self.heading
+    
+    def get_pitch(self) -> float:
+        """Returns pitch from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return self.pitch
+        # Otherwise, refresh the value and return it
+        self.pitch = imu.get_pitch()
+        self.imu_last_update = time.ticks_ms()
+        return self.pitch
+
+    def get_roll(self) -> float:
+        """Returns roll from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return self.roll
+        # Otherwise, refresh the value and return it
+        self.roll = imu.get_roll()
+        self.imu_last_update = time.ticks_ms()
+        return self.roll
+    
+    def start(self):
+        """Schedules both polling routines on the event loop."""
+        asyncio.create_task(self._poll_rangefinder(interval_ms=50))
+        asyncio.create_task(self._poll_imu(interval_ms=15))
+
+# Initialize the cache
+cache = XRPTelemetryCache()
 
 # -------------------------------------------------------------
 # Command Dispatch Table
@@ -60,18 +148,23 @@ def cmd_servo(servo_num, angle):
     s.set_angle(angle_val)
     return f"{servo_num},{angle_val}"
 
+@command("PING")
+def cmd_ping():
+    """Connectivity heartbeat / handshake."""
+    return "PONG"
+
 @command("RF")
 def cmd_rangefinder():
     """Query rangefinder distance in cm."""
-    dist = rf.distance()
+    dist = cache.get_distance()
     return f"{dist:.2f}"
 
 @command("IMU")
 def cmd_imu():
     """Query the IMU."""
-    pitch = imu.get_pitch()
-    heading = imu.get_heading()
-    yaw = imu.get_yaw()
+    pitch = cache.get_pitch()
+    heading = cache.get_heading()
+    yaw = cache.get_yaw()
     return f"{pitch:.2f},{heading:.2f},{yaw:.2f}"
 
 @command("DRIVE")
@@ -175,6 +268,8 @@ async def robot_background_task():
         pass
 
 async def main():
+    cache.start()
+    
     # Set initial visual ready state (dim blue)
     board.led_on()
 
