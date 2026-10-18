@@ -52,3 +52,11 @@ with XRPController() as bot:
 ```
 
 ---
+### Testing this module
+
+This module's tests are designed to be run with the robot connected. To run them, install the module locally and then run the test suite:
+
+```
+pip install -e .
+python -m unittest tests/test_xrp_usb_controller.py -v
+```
