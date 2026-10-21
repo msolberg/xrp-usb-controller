@@ -162,6 +162,43 @@ class XRPController:
                 pass
         return None
 
+    def get_battery_voltage(self) -> Optional[float]:
+        """Return the current battery voltage in volts"""
+        resp = self.send_command("VOLT")
+        if resp.startswith("ACK:VOLT,"):
+            try:
+                return float(resp.split(",")[1])
+            except (IndexError, ValueError):
+                return 0
+                pass
+        return None
+    
+    def get_left_encoder_position(self) -> Optional[float]:
+        """Return the encoder position of the left motor in cm"""
+        resp = self.send_command("DRIVE,GET_POS")
+        if resp.startswith("ACK:DRIVE,"):
+            try:
+                return float(resp.split(",")[1])
+            except (IndexError, ValueError):
+                return 0
+                pass
+        return None
+    
+    def get_right_encoder_position(self) -> Optional[float]:
+        """Return the encoder position of the left motor in cm"""
+        resp = self.send_command("DRIVE,GET_POS")
+        if resp.startswith("ACK:DRIVE,"):
+            try:
+                return float(resp.split(",")[2])
+            except (IndexError, ValueError):
+                return 0
+                pass
+        return None
+    
+    def reset_encoder_position(self):
+        """Reset the encoder position of both motors"""
+        return self.send_command("DRIVE,RESET_POS")
+    
     # ---------------------------------------------------------
     # Drivetrain
     # ---------------------------------------------------------

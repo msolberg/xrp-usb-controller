@@ -225,6 +225,11 @@ def cmd_imu():
     temperature = cache.get_temperature()
     return f"{heading:.2f},{yaw:.2f},{pitch:.2f},{roll:.2f},{acc_x:.2f},{acc_y:.2f},{acc_z:.2f},{gyro_x:.2f},{gyro_y:.2f},{gyro_z:.2f},{temperature:.2f}"
 
+@command("VOLT")
+def cmd_volt():
+    """Return the battery voltage in volts"""
+    return board.get_battery_voltage()
+
 @command("DRIVE")
 def cmd_drivetrain(action, *args):
     """Control drivetrain:
@@ -234,6 +239,8 @@ def cmd_drivetrain(action, *args):
     DRIVE,ARCADE,<straight>,<turn>
     DRIVE,STRAIGHT,<distance>[,<effort>]
     DRIVE,TURN,<degrees>[,<effort>]
+    DRIVE,RESET_POS
+    DRIVE,GET_POS
     """
     action = action.upper()
     if action == "STOP":
@@ -262,6 +269,12 @@ def cmd_drivetrain(action, *args):
         deg = float(args[0])
         effort = float(args[1]) if len(args) > 1 else 0.5
         drivetrain.turn(deg, max_effort=effort)
+    elif action == "RESET_POS":
+        drivetrain.reset_encoder_position()
+    elif action == "GET_POS":
+        left_pos = drivetrain.get_left_encoder_position()
+        right_pos = drivetrain.get_right_encoder_position()
+        return f"{left_pos:.2f},{right_pos:.2f}"
     else:
         raise ValueError(f"Unknown drive action: {action}")
     return action
