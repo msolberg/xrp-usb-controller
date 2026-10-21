@@ -3,20 +3,28 @@
 import serial
 import time
 from typing import Optional
+from packaging.version import Version, InvalidVersion
 
 SERIAL_PORT = "/dev/ttyACM0"
 BAUD_RATE = 115200
 
-
 class XRPController:
     """Client interface for communicating with an XRP robot running usb_control.py."""
 
+    # Required version of the software running on the control board
+    API_VERSION = Version("0.3.0")
+    
     def __init__(self, port: str = SERIAL_PORT, baudrate: int = BAUD_RATE, timeout: float = 3.0):
         self.ser = serial.Serial(port, baudrate, timeout=timeout)
         self.ser.dtr = True
         self.ser.rts = True
         time.sleep(0.1)
+        # Sync with the control board
         self.sync_connection()
+        # Version check
+        bot_version = Version(self.get_version())
+        if bot_version < self.API_VERSION:
+            raise(InvalidVersion)
     
     def sync_connection(self, max_attempts: int = 5) -> bool:
         """Synchronize the serial connection and verify the controller responds."""
@@ -44,6 +52,15 @@ class XRPController:
         
         # We were unable to get a ping back.
         return False
+
+    def get_version(self) -> Version:
+        """Get the current API version from the controller"""
+        resp = self.send_command("VERSION")
+        if resp.startswith("ACK:VERSION"):
+            try:
+                return resp.split(',')[1]
+            except (IndexError, ValueError):
+                return 0
 
     def ping(self) -> bool:
         """Send PING to check controller status."""
@@ -114,6 +131,32 @@ class XRPController:
         if resp.startswith("ACK:RF,"):
             try:
                 return float(resp.split(",")[1])
+            except (IndexError, ValueError):
+                return 0
+                pass
+        return None
+
+    def read_imu(self) -> Optional[dict]:
+        """Query the IMU. Return a dictionary of the telemetry data."""
+        resp = self.send_command("IMU")
+        # Response should be f"ACK:IMU,{heading:.2f},{yaw:.2f},{pitch:.2f},{roll:.2f},{acc_x:.2f},{acc_y:.2f},{acc_z:.2f},{gyro_x:.2f},{gyro_y:.2f},{gyro_z:.2f},{temperature:.2f}"
+        if resp.startswith("ACK:IMU,"):
+            try:
+                l = resp.split(',')
+                d = {
+                    'heading': float(l[1]),
+                    'yaw': float(l[2]),
+                    'pitch': float(l[3]),
+                    'roll': float(l[4]),
+                    'acc_x': float(l[5]),
+                    'acc_y': float(l[6]),
+                    'acc_z': float(l[7]),
+                    'gyro_x': float(l[8]),
+                    'gyro_y': float(l[9]),
+                    'gyro_z': float(l[10]),
+                    'temperature': float(l[11])
+                    }
+                return d
             except (IndexError, ValueError):
                 return 0
                 pass

@@ -9,6 +9,8 @@ from XRPLib.defaults import Board, drivetrain, imu
 from XRPLib.rangefinder import Rangefinder
 from XRPLib.servo import Servo
 
+_VERSION = '0.3.0'
+
 # Hardware initialization
 board = Board.get_default_board()
 servo_one = Servo.get_default_servo(1)
@@ -25,12 +27,16 @@ class XRPTelemetryCache:
         self.distance_last_update: int = 0
         
         # IMU state
-        self.heading: float = 0.0
         self.pitch: float = 0.0
+        self.yaw = float = 0.0
+        self.heading: float = 0.0
         self.roll: float = 0.0
-        self.accel_x: int = 0 
-        self.accel_y: int = 0 
-        self.accel_z: int = 0 
+        self.acc_x: int = 0 
+        self.acc_y: int = 0 
+        self.acc_z: int = 0 
+        self.gyro_x: int = 0 
+        self.gyro_y: int = 0 
+        self.gyro_z: int = 0 
         self.temperature: int = 0
         self.imu_last_update: int = 0
 
@@ -45,10 +51,12 @@ class XRPTelemetryCache:
     async def _poll_imu(self, interval_ms: int = 15):
         """Dedicated IMU task (~15ms / ~66 Hz)."""
         while True:
-            self.heading = imu.get_heading()
             self.pitch = imu.get_pitch()
+            self.yaw = imu.get_yaw()
+            self.heading = imu.get_heading()
             self.roll = imu.get_roll()
-            self.accel_x, self.accel_y, self.accel_z = imu.get_acc_rates()
+            (self.accel_x, self.accel_y, self.accel_z) = imu.get_acc_rates()
+            (self.gyro_x, self.gyro_y, self.gyro_z) = imu.get_gyro_rates()
             self.temperature = imu.temperature()
             self.imu_last_update = time.ticks_ms()
             await asyncio.sleep_ms(interval_ms)
@@ -64,17 +72,6 @@ class XRPTelemetryCache:
         self.distance_last_update = time.ticks_ms()
         return self.distance_cm
 
-    def get_heading(self) -> float:
-        """Returns heading from cache if fresh"""
-        now = time.ticks_ms()
-        age = time.ticks_diff(now, self.imu_last_update)
-        if self.imu_last_update !=0 and age < 100:
-            return self.heading
-        # Otherwise, refresh the value and return it
-        self.heading = imu.get_heading()
-        self.imu_last_update = time.ticks_ms()
-        return self.heading
-    
     def get_pitch(self) -> float:
         """Returns pitch from cache if fresh"""
         now = time.ticks_ms()
@@ -86,6 +83,28 @@ class XRPTelemetryCache:
         self.imu_last_update = time.ticks_ms()
         return self.pitch
 
+    def get_yaw(self) -> float:
+        """Returns yaw from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return self.yaw
+        # Otherwise, refresh the value and return it
+        self.yaw = imu.get_yaw()
+        self.imu_last_update = time.ticks_ms()
+        return self.pitch
+
+    def get_heading(self) -> float:
+        """Returns heading from cache if fresh"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return self.heading
+        # Otherwise, refresh the value and return it
+        self.heading = imu.get_heading()
+        self.imu_last_update = time.ticks_ms()
+        return self.heading
+    
     def get_roll(self) -> float:
         """Returns roll from cache if fresh"""
         now = time.ticks_ms()
@@ -96,6 +115,36 @@ class XRPTelemetryCache:
         self.roll = imu.get_roll()
         self.imu_last_update = time.ticks_ms()
         return self.roll
+
+    def get_acc_rates(self) -> tuple[float]:
+        """Returns the acceleration rates for x,y,z"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return (self.acc_x, self.acc_y, self.acc_z)
+        # Otherwise, refresh the value and return it
+        (self.acc_x, self.acc_y, self.acc_z) = imu.get_acc_rates()
+        return (self.acc_x, self.acc_y, self.acc_z)
+
+    def get_gyro_rates(self) -> tuple[float]:
+        """Returns the acceleration rates for x,y,z"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return (self.gyro_x, self.gyro_y, self.gyro_z)
+        # Otherwise, refresh the value and return it
+        (self.gyro_x, self.gyro_y, self.gyro_z) = imu.get_gyro_rates()
+        return (self.gyro_x, self.gyro_y, self.gyro_z)
+
+    def get_temperature(self) -> float:
+        """Returns the temperature in degrees celcius"""
+        now = time.ticks_ms()
+        age = time.ticks_diff(now, self.imu_last_update)
+        if self.imu_last_update !=0 and age < 100:
+            return (self.temperature)
+        # Otherwise, refresh the value and return it
+        self.temperature = imu.temperature()
+        return self.temperature
     
     def start(self):
         """Schedules both polling routines on the event loop."""
@@ -116,6 +165,11 @@ def command(name):
         COMMANDS[name.upper()] = func
         return func
     return decorator
+
+@command("VERSION")
+def get_version():
+    """Return the current version of the control program"""
+    return f"{_VERSION}"
 
 @command("STOP")
 def cmd_stop():
@@ -162,10 +216,14 @@ def cmd_rangefinder():
 @command("IMU")
 def cmd_imu():
     """Query the IMU."""
-    pitch = cache.get_pitch()
     heading = cache.get_heading()
     yaw = cache.get_yaw()
-    return f"{pitch:.2f},{heading:.2f},{yaw:.2f}"
+    pitch = cache.get_pitch()
+    roll = cache.get_roll()
+    (acc_x, acc_y, acc_z) = cache.get_acc_rates()
+    (gyro_x, gyro_y, gyro_z) = cache.get_gyro_rates()
+    temperature = cache.get_temperature()
+    return f"{heading:.2f},{yaw:.2f},{pitch:.2f},{roll:.2f},{acc_x:.2f},{acc_y:.2f},{acc_z:.2f},{gyro_x:.2f},{gyro_y:.2f},{gyro_z:.2f},{temperature:.2f}"
 
 @command("DRIVE")
 def cmd_drivetrain(action, *args):

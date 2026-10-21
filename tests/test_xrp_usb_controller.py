@@ -46,6 +46,21 @@ class XRPControllerTests(unittest.TestCase):
         resp = self.bot.read_rangefinder()
         self.assertTrue(isinstance(resp, float))
 
+    def test_imu(self):
+        d = self.bot.read_imu()
+        self.assertTrue(isinstance(d, dict))
+        self.assertTrue(isinstance(d['heading'], float))
+        self.assertTrue(isinstance(d['yaw'], float))
+        self.assertTrue(isinstance(d['pitch'], float))
+        self.assertTrue(isinstance(d['roll'], float))
+        self.assertTrue(isinstance(d['acc_x'], float))
+        self.assertTrue(isinstance(d['acc_y'], float))
+        self.assertTrue(isinstance(d['acc_z'], float))
+        self.assertTrue(isinstance(d['gyro_x'], float))
+        self.assertTrue(isinstance(d['gyro_y'], float))
+        self.assertTrue(isinstance(d['gyro_z'], float))
+        self.assertTrue(isinstance(d['temperature'], float))
+
     def test_drivetrain(self):
         effort = self.bot.drive_effort(0, 0)
         self.assertTrue(effort.startswith("ACK:DRIVE,EFFORT"))
@@ -59,7 +74,6 @@ class XRPControllerTests(unittest.TestCase):
         self.assertTrue(turn.startswith("ACK:DRIVE,TURN"))
         stop = self.bot.drive_stop()
         self.assertTrue(stop.startswith("ACK:DRIVE,STOP"))
-        
 
     
 
