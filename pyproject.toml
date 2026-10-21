@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xrp-usb-controller"
-version = "0.1.0"
+version = "0.3.0"
 description = "Control an XRP robot over a USB serial connection."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,7 +13,8 @@ authors = [
     { name = "Michael Solberg <mpsolberg@gmail.com>" },
 ]
 dependencies = [
-    "pyserial>=3.5",
+    "mpremote>=1.29.0",
+    "packaging>=26.3",
 ]
 
 [project.urls]

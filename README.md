@@ -60,3 +60,8 @@ This module's tests are designed to be run with the robot connected. To run them
 pip install -e .
 python -m unittest tests/test_xrp_usb_controller.py -v
 ```
+
+---
+### Troubleshooting
+
+If you get a InvalidVersion exception, then the version of `usb_control.py` on the control board is too old for the controller. Update the code on the control board as documented above.
